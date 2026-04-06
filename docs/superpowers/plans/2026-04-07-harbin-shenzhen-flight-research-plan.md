@@ -1,83 +1,83 @@
-# Harbin To Shenzhen Flight Research Implementation Plan
+# 哈尔滨回深圳机票调研执行计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **供代理型执行者使用：** 必需子技能：使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans` 按任务逐项执行本计划。步骤使用复选框（`- [ ]`）语法跟踪。
 
-**Goal:** Execute the approved research spec and produce a source-backed report for `2026-05-05` flights from `哈尔滨 / 长春 / 牡丹江` to the `深圳坪山站` direction, including Top 3 itineraries and a purchase-timing recommendation.
+**目标：** 执行已批准的调研规格，产出一份有来源支撑的 `2026-05-05` 从 `哈尔滨 / 长春 / 牡丹江` 前往 `深圳坪山站` 方向的航班报告，包含 Top 3 行程和购票时机建议。
 
-**Architecture:** Use a docs-first workflow. Capture OTA search results in a normalized CSV, validate shortlisted itineraries against official airline channels, add non-Shenzhen ground-transfer data to `深圳坪山站`, then write a final report that separates verified facts from trend-based inference.
+**架构：** 采用 docs-first 工作流。先把 OTA 搜索结果归一化记录到 CSV，再用航司官方渠道校验入围行程，为非深圳直达方案补充到 `深圳坪山站` 的地面接驳信息，最后撰写区分已核实事实与趋势推断的最终报告。
 
-**Tech Stack:** Markdown, CSV, Git, browser-based OTA and airline searches, shell validation utilities (`rg`, `head`, `wc`, `awk`)
+**技术栈：** Markdown、CSV、Git、基于浏览器的 OTA 与航司搜索、Shell 校验工具（`rg`、`head`、`wc`、`awk`）
 
 ---
 
-## Planned Files
+## 计划文件
 
-- Create: `data/flight-research/2026-05-05/candidates.csv`
-- Create: `data/flight-research/2026-05-05/evidence-log.md`
-- Create: `data/flight-research/2026-05-05/ground-transfer-notes.md`
-- Create: `data/flight-research/2026-05-05/trend-analysis.md`
-- Create: `data/flight-research/2026-05-05/shortlist.md`
-- Create: `docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
+- 创建：`data/flight-research/2026-05-05/candidates.csv`
+- 创建：`data/flight-research/2026-05-05/evidence-log.md`
+- 创建：`data/flight-research/2026-05-05/ground-transfer-notes.md`
+- 创建：`data/flight-research/2026-05-05/trend-analysis.md`
+- 创建：`data/flight-research/2026-05-05/shortlist.md`
+- 创建：`docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
 
-## Route Matrix
+## 航线矩阵
 
-All searches must stay inside this matrix:
+所有搜索都必须限定在以下矩阵内：
 
-- Origins: `哈尔滨 (HRB)`, `长春 (CGQ)`, `牡丹江 (MDG)`
-- Destinations: `深圳 (SZX)`, `香港 (HKG)`, `澳门 (MFM)`, `广州 (CAN)`, `珠海 (ZUH)`, `惠州 (HUZ)`
-- Date: `2026-05-05`
-- Same-day arrival only
-- Allow nonstop and connecting itineraries
-- Minimum layover: `60` minutes
-- Target arrival anchor: `深圳坪山站`
-- Fare basis: adult, tax-inclusive, bare fare only
-- Sources: airline official sites, 携程, 飞猪, 同程, 去哪儿, 航旅纵横
+- 出发地：`哈尔滨 (HRB)`、`长春 (CGQ)`、`牡丹江 (MDG)`
+- 到达地：`深圳 (SZX)`、`香港 (HKG)`、`澳门 (MFM)`、`广州 (CAN)`、`珠海 (ZUH)`、`惠州 (HUZ)`
+- 日期：`2026-05-05`
+- 仅允许当日到达
+- 允许直飞和中转行程
+- 最短中转时间：`60` 分钟
+- 目标到达锚点：`深圳坪山站`
+- 票价口径：成人、含税、裸票
+- 数据来源：航司官网、携程、飞猪、同程、去哪儿、航旅纵横
 
-### Task 1: Scaffold The Research Workspace
+### 任务 1：搭建调研工作区
 
-**Files:**
-- Create: `data/flight-research/2026-05-05/candidates.csv`
-- Create: `data/flight-research/2026-05-05/evidence-log.md`
-- Create: `data/flight-research/2026-05-05/ground-transfer-notes.md`
-- Create: `data/flight-research/2026-05-05/trend-analysis.md`
-- Create: `docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
+**文件：**
+- 创建：`data/flight-research/2026-05-05/candidates.csv`
+- 创建：`data/flight-research/2026-05-05/evidence-log.md`
+- 创建：`data/flight-research/2026-05-05/ground-transfer-notes.md`
+- 创建：`data/flight-research/2026-05-05/trend-analysis.md`
+- 创建：`docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
 
-- [ ] **Step 1: Create the research directories**
+- [ ] **步骤 1：创建调研目录**
 
-Run: `mkdir -p data/flight-research/2026-05-05 docs/superpowers/research`
-Expected: command exits with no output
+运行：`mkdir -p data/flight-research/2026-05-05 docs/superpowers/research`
+预期：命令成功退出且无输出
 
-- [ ] **Step 2: Seed the candidate table with the exact header**
+- [ ] **步骤 2：用精确表头初始化候选表**
 
 ```csv
 captured_at,channel,origin_city,origin_airport,destination_city,destination_airport,airline,flight_numbers,depart_at,arrive_at,arrive_same_day,stops,stop_city,layover_minutes,listed_price_cny,price_basis,bookable,official_price_cny,official_checked_at,official_status,ground_mode_to_pingshan,ground_cost_cny,ground_minutes,total_minutes,risk_level,risk_notes,score,link_or_path
 ```
 
-- [ ] **Step 3: Verify the CSV header is correct**
+- [ ] **步骤 3：校验 CSV 表头正确**
 
-Run: `head -n 1 data/flight-research/2026-05-05/candidates.csv`
-Expected:
+运行：`head -n 1 data/flight-research/2026-05-05/candidates.csv`
+预期：
 
 ```text
 captured_at,channel,origin_city,origin_airport,destination_city,destination_airport,airline,flight_numbers,depart_at,arrive_at,arrive_same_day,stops,stop_city,layover_minutes,listed_price_cny,price_basis,bookable,official_price_cny,official_checked_at,official_status,ground_mode_to_pingshan,ground_cost_cny,ground_minutes,total_minutes,risk_level,risk_notes,score,link_or_path
 ```
 
-- [ ] **Step 4: Seed the evidence log**
+- [ ] **步骤 4：初始化证据日志**
 
 ```md
-# Evidence Log
+# 证据日志
 
-## Search Parameters
+## 搜索参数
 
-- Captured on: 2026-04-07
-- Travel date: 2026-05-05
-- Origins: 哈尔滨 / 长春 / 牡丹江
-- Destinations: 深圳 / 香港 / 澳门 / 广州 / 珠海 / 惠州
-- Final comparison anchor: 深圳坪山站
-- Fare basis: 成人含税裸票
-- Constraints: same-day departure and same-day arrival, layover >= 60 minutes and preferably <= 6 hours
+- 抓取日期：2026-04-07
+- 出行日期：2026-05-05
+- 出发地：哈尔滨 / 长春 / 牡丹江
+- 到达地：深圳 / 香港 / 澳门 / 广州 / 珠海 / 惠州
+- 最终比较锚点：深圳坪山站
+- 票价口径：成人含税裸票
+- 约束：当日出发且当日到达，中转 >= 60 分钟，且最好 <= 6 小时
 
-## OTA Capture
+## OTA 抓取
 
 ### 携程
 
@@ -89,15 +89,15 @@ captured_at,channel,origin_city,origin_airport,destination_city,destination_airp
 
 ### 航旅纵横
 
-## Official Validation
+## 官方校验
 
-## Notes On Price Conflicts
+## 价格冲突备注
 ```
 
-- [ ] **Step 5: Seed the ground-transfer notes**
+- [ ] **步骤 5：初始化地面接驳备注**
 
 ```md
-# Ground Transfer Notes To 深圳坪山站
+# 前往深圳坪山站的地面接驳备注
 
 ## 深圳
 
@@ -112,25 +112,25 @@ captured_at,channel,origin_city,origin_airport,destination_city,destination_airp
 ## 惠州
 ```
 
-- [ ] **Step 6: Seed the trend-analysis notes**
+- [ ] **步骤 6：初始化趋势分析备注**
 
 ```md
-# Trend Analysis Notes
+# 价格趋势分析备注
 
-## Verified Facts
+## 已核实事实
 
-## Neighbor-Date Comparisons
+## 邻近日期比较
 
-## 7 Day Window
+## 7 天窗口
 
-## 14 Day Window
+## 14 天窗口
 
-## 21 Day Window
+## 21 天窗口
 
-## Inferences
+## 推断
 ```
 
-- [ ] **Step 7: Seed the final report skeleton**
+- [ ] **步骤 7：初始化最终报告骨架**
 
 ```md
 # 2026-05-05 哈尔滨方向回深圳机票深度调研
@@ -154,77 +154,77 @@ captured_at,channel,origin_city,origin_airport,destination_city,destination_airp
 ## 9. 简短结论摘要
 ```
 
-- [ ] **Step 8: Commit the scaffolding**
+- [ ] **步骤 8：提交脚手架文件**
 
 ```bash
 git add data/flight-research/2026-05-05/candidates.csv data/flight-research/2026-05-05/evidence-log.md data/flight-research/2026-05-05/ground-transfer-notes.md data/flight-research/2026-05-05/trend-analysis.md docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md
-git commit -m "docs: scaffold flight research workspace"
+git commit -m "docs: 搭建机票调研工作区"
 ```
 
-### Task 2: Capture OTA Inventory Across The Full Matrix
+### 任务 2：抓取完整航线矩阵的 OTA 库存
 
-**Files:**
-- Modify: `data/flight-research/2026-05-05/candidates.csv`
-- Modify: `data/flight-research/2026-05-05/evidence-log.md`
+**文件：**
+- 修改：`data/flight-research/2026-05-05/candidates.csv`
+- 修改：`data/flight-research/2026-05-05/evidence-log.md`
 
-- [ ] **Step 1: Record the exact route matrix in the evidence log**
+- [ ] **步骤 1：在证据日志中记录精确的航线矩阵**
 
-Add this checklist under `## OTA Capture`:
+在 `## OTA 抓取` 下添加以下清单：
 
 ```md
-Route matrix:
+航线矩阵：
 - HRB -> SZX / HKG / MFM / CAN / ZUH / HUZ
 - CGQ -> SZX / HKG / MFM / CAN / ZUH / HUZ
 - MDG -> SZX / HKG / MFM / CAN / ZUH / HUZ
 ```
 
-- [ ] **Step 2: Search 携程 for all 18 origin and destination pairs and append every sellable same-day itinerary to the CSV**
+- [ ] **步骤 2：搜索携程的全部 18 个出发地/到达地组合，并把每个可售且当日到达的行程追加到 CSV**
 
-For each CSV row:
-- `captured_at` uses ISO-like local time, for example `2026-04-07T10:35+08:00`
-- `channel` is `携程`
-- `arrive_same_day` is `yes`
-- `stops` is `0` for nonstop and `1` for a single connection
-- `stop_city` and `layover_minutes` are empty only for nonstop rows
-- `price_basis` is exactly `adult_tax_included_bare_fare`
-- `bookable` is `yes` only if the source shows an actual purchase path
-- `link_or_path` is a URL or a reproducible navigation note
+对每一行 CSV：
+- `captured_at` 使用类似 `2026-04-07T10:35+08:00` 的本地 ISO 风格时间
+- `channel` 填 `携程`
+- `arrive_same_day` 填 `yes`
+- `stops` 对直飞填 `0`，单次中转填 `1`
+- 仅直飞行程允许 `stop_city` 和 `layover_minutes` 为空
+- `price_basis` 必须精确填写为 `adult_tax_included_bare_fare`
+- 只有来源页面展示实际购买路径时，`bookable` 才填 `yes`
+- `link_or_path` 填 URL 或可复现的导航说明
 
-- [ ] **Step 3: Search 飞猪 for the same 18 pairs and append every sellable same-day itinerary to the CSV**
+- [ ] **步骤 3：以相同的 18 个组合搜索飞猪，并把每个可售且当日到达的行程追加到 CSV**
 
-Use the same capture rules as Step 2 and append `channel = 飞猪`.
+沿用步骤 2 的采集规则，并追加 `channel = 飞猪`。
 
-- [ ] **Step 4: Search 同程 for the same 18 pairs and append every sellable same-day itinerary to the CSV**
+- [ ] **步骤 4：以相同的 18 个组合搜索同程，并把每个可售且当日到达的行程追加到 CSV**
 
-Use the same capture rules as Step 2 and append `channel = 同程`.
+沿用步骤 2 的采集规则，并追加 `channel = 同程`。
 
-- [ ] **Step 5: Search 去哪儿 for the same 18 pairs and append every sellable same-day itinerary to the CSV**
+- [ ] **步骤 5：以相同的 18 个组合搜索去哪儿，并把每个可售且当日到达的行程追加到 CSV**
 
-Use the same capture rules as Step 2 and append `channel = 去哪儿`.
+沿用步骤 2 的采集规则，并追加 `channel = 去哪儿`。
 
-- [ ] **Step 6: Search 航旅纵横 for the same 18 pairs and append every sellable same-day itinerary to the CSV**
+- [ ] **步骤 6：以相同的 18 个组合搜索航旅纵横，并把每个可售且当日到达的行程追加到 CSV**
 
-Use the same capture rules as Step 2 and append `channel = 航旅纵横`.
+沿用步骤 2 的采集规则，并追加 `channel = 航旅纵横`。
 
-- [ ] **Step 7: Add timestamped subsections for each OTA channel in the evidence log**
+- [ ] **步骤 7：为每个 OTA 渠道在证据日志中添加带时间戳的小节**
 
-Each channel subsection must record:
-- query start time
-- query end time
-- the date searched
-- the route matrix covered
-- notable gaps, for example “no results for MDG -> HUZ”
-- pricing anomalies, if any
+每个渠道小节都必须记录：
+- 查询开始时间
+- 查询结束时间
+- 搜索日期
+- 覆盖的航线矩阵
+- 显著缺口，例如 “MDG -> HUZ 无结果”
+- 价格异常（如有）
 
-- [ ] **Step 8: Verify the raw inventory is not empty**
+- [ ] **步骤 8：校验原始库存不为空**
 
-Run: `wc -l data/flight-research/2026-05-05/candidates.csv`
-Expected: total line count is greater than `1`
+运行：`wc -l data/flight-research/2026-05-05/candidates.csv`
+预期：总行数大于 `1`
 
-- [ ] **Step 9: Verify every OTA channel has a subsection**
+- [ ] **步骤 9：校验每个 OTA 渠道都有对应小节**
 
-Run: `rg '^### ' data/flight-research/2026-05-05/evidence-log.md`
-Expected:
+运行：`rg '^### ' data/flight-research/2026-05-05/evidence-log.md`
+预期：
 
 ```text
 ### 携程
@@ -234,201 +234,201 @@ Expected:
 ### 航旅纵横
 ```
 
-- [ ] **Step 10: Commit the OTA inventory**
+- [ ] **步骤 10：提交 OTA 库存**
 
 ```bash
 git add data/flight-research/2026-05-05/candidates.csv data/flight-research/2026-05-05/evidence-log.md
-git commit -m "docs: capture ota flight inventory"
+git commit -m "docs: 抓取 OTA 航班库存"
 ```
 
-### Task 3: Validate Distinct Itineraries On Official Airline Channels
+### 任务 3：在航司官方渠道校验不同的行程
 
-**Files:**
-- Modify: `data/flight-research/2026-05-05/candidates.csv`
-- Modify: `data/flight-research/2026-05-05/evidence-log.md`
+**文件：**
+- 修改：`data/flight-research/2026-05-05/candidates.csv`
+- 修改：`data/flight-research/2026-05-05/evidence-log.md`
 
-- [ ] **Step 1: Dedupe the OTA inventory by `airline + flight_numbers + depart_at + arrive_at` and build a shortlist of distinct itineraries**
+- [ ] **步骤 1：按 `airline + flight_numbers + depart_at + arrive_at` 对 OTA 库存去重，并生成不同航班组合的候选清单**
 
-Use the deduped list to avoid searching official channels repeatedly for the same flight combination across multiple OTAs.
+使用去重后的清单，避免对同一套航班组合在多个 OTA 上重复查询航司官网。
 
-- [ ] **Step 2: For each distinct itinerary, search the relevant airline official site and record the official result**
+- [ ] **步骤 2：对每个不同的行程组合，搜索对应航司官网并记录官方结果**
 
-Update these CSV columns for every row that belongs to the same itinerary:
+对属于同一行程的每一行都更新以下 CSV 列：
 - `official_price_cny`
 - `official_checked_at`
 - `official_status`
 
-Allowed `official_status` values:
+允许的 `official_status` 值：
 - `matched`
 - `not_found`
 - `site_unavailable`
 - `not_directly_bookable`
 
-- [ ] **Step 3: Record every official validation outcome in the evidence log**
+- [ ] **步骤 3：把每次官方校验结果记录到证据日志**
 
-Under `## Official Validation`, record:
-- airline
-- flight numbers
-- validation time
-- official result
-- official price if found
-- link or navigation path
+在 `## 官方校验` 下记录：
+- 航司
+- 航班号
+- 校验时间
+- 官方结果
+- 若查到则记录官方价格
+- 链接或导航路径
 
-- [ ] **Step 4: Record price conflicts in the dedicated section**
+- [ ] **步骤 4：把价格冲突记录到专门章节**
 
-For any itinerary where an OTA price differs from the official price, add one bullet in `## Notes On Price Conflicts` with:
-- itinerary identifier
-- cheapest OTA price
-- official price
-- likely cause if visible
+对任何 OTA 价格与官方价格不一致的行程，在 `## 价格冲突备注` 下新增一条 bullet，包含：
+- 行程标识
+- 最低 OTA 价格
+- 官方价格
+- 如果能看出原因，则写明可能原因
 
-- [ ] **Step 5: Verify every captured row has an official status**
+- [ ] **步骤 5：校验每条抓取记录都有官方状态**
 
-Run: `awk -F, 'NR>1 && $20=="" {print NR}' data/flight-research/2026-05-05/candidates.csv`
-Expected: no output
+运行：`awk -F, 'NR>1 && $20=="" {print NR}' data/flight-research/2026-05-05/candidates.csv`
+预期：无输出
 
-- [ ] **Step 6: Commit the official validation pass**
+- [ ] **步骤 6：提交官方校验结果**
 
 ```bash
 git add data/flight-research/2026-05-05/candidates.csv data/flight-research/2026-05-05/evidence-log.md
-git commit -m "docs: validate flights against official channels"
+git commit -m "docs: 校验航班官方渠道信息"
 ```
 
-### Task 4: Capture Ground Transfers To 深圳坪山站
+### 任务 4：补充前往深圳坪山站的地面接驳信息
 
-**Files:**
-- Modify: `data/flight-research/2026-05-05/candidates.csv`
-- Modify: `data/flight-research/2026-05-05/ground-transfer-notes.md`
+**文件：**
+- 修改：`data/flight-research/2026-05-05/candidates.csv`
+- 修改：`data/flight-research/2026-05-05/ground-transfer-notes.md`
 
-- [ ] **Step 1: For each non-Shenzhen destination city, find the fastest realistic same-day path to 深圳坪山站**
+- [ ] **步骤 1：为每个非深圳落地点找出当日到达后前往深圳坪山站的最快可行路径**
 
-Cover these city buckets:
+覆盖以下城市分组：
 - 香港
 - 澳门
 - 广州
 - 珠海
 - 惠州
 
-Each bucket must include:
-- starting airport or arrival area
-- primary transfer mode
-- estimated fare in CNY
-- total transfer minutes
-- key operational risk
+每个分组都必须包含：
+- 起始机场或到达区域
+- 主要接驳方式
+- 预估人民币费用
+- 接驳总时长（分钟）
+- 关键运营风险
 
-- [ ] **Step 2: Record the transfer notes under the correct city heading**
+- [ ] **步骤 2：把接驳备注记录到对应城市标题下**
 
-Every city section must end with a one-line recommendation such as:
-- “default transfer path for scoring”
-- “backup path if the default route misses the last train”
+每个城市章节都必须以一行建议收尾，例如：
+- “作为评分默认接驳路径”
+- “如果默认路径赶不上末班车，则采用此备选路径”
 
-- [ ] **Step 3: Populate the ground-transfer columns in the candidate table**
+- [ ] **步骤 3：填充候选表中的地面接驳列**
 
-Update for every row:
+为每一行更新：
 - `ground_mode_to_pingshan`
 - `ground_cost_cny`
 - `ground_minutes`
 
-For direct Shenzhen arrivals:
-- `ground_mode_to_pingshan` may be `metro_or_taxi_from_szx`
-- `ground_cost_cny` and `ground_minutes` must still be filled with the best realistic same-day estimate
+对深圳直达落地：
+- `ground_mode_to_pingshan` 可以填 `metro_or_taxi_from_szx`
+- 但 `ground_cost_cny` 和 `ground_minutes` 仍必须填写最现实的当日估算值
 
-- [ ] **Step 4: Compute `total_minutes` for every candidate**
+- [ ] **步骤 4：为每个候选项计算 `total_minutes`**
 
-`total_minutes` must include:
-- air travel time
-- layover time
-- ground-transfer time to 深圳坪山站
+`total_minutes` 必须包含：
+- 飞行时长
+- 中转时长
+- 前往 `深圳坪山站` 的地面接驳时长
 
-- [ ] **Step 5: Verify non-Shenzhen rows do not have missing ground-transfer data**
+- [ ] **步骤 5：校验非深圳落地行没有缺失地面接驳数据**
 
-Run: `awk -F, 'NR>1 && $5!="深圳" && ($21=="" || $22=="" || $23=="") {print NR}' data/flight-research/2026-05-05/candidates.csv`
-Expected: no output
+运行：`awk -F, 'NR>1 && $5!="深圳" && ($21=="" || $22=="" || $23=="") {print NR}' data/flight-research/2026-05-05/candidates.csv`
+预期：无输出
 
-- [ ] **Step 6: Commit the ground-transfer data**
+- [ ] **步骤 6：提交地面接驳数据**
 
 ```bash
 git add data/flight-research/2026-05-05/candidates.csv data/flight-research/2026-05-05/ground-transfer-notes.md
-git commit -m "docs: add ground transfer scoring inputs"
+git commit -m "docs: 补充地面接驳评分输入"
 ```
 
-### Task 5: Apply Hard Filters And Produce The Shortlist
+### 任务 5：应用硬筛选并产出候选清单
 
-**Files:**
-- Create: `data/flight-research/2026-05-05/shortlist.md`
-- Modify: `data/flight-research/2026-05-05/candidates.csv`
+**文件：**
+- 创建：`data/flight-research/2026-05-05/shortlist.md`
+- 修改：`data/flight-research/2026-05-05/candidates.csv`
 
-- [ ] **Step 1: Remove or mark any row that violates the approved hard constraints**
+- [ ] **步骤 1：移除或标记任何违反已批准硬约束的记录**
 
-Disqualify rows that violate any of these:
-- not same-day arrival
-- layover under `60` minutes
-- layover far beyond the preferred `6` hour ceiling
-- wrong origin or destination city
-- non-bare-fare price basis
-- source outside the approved set
+淘汰任何违反以下条件的行：
+- 不是当日到达
+- 中转短于 `60` 分钟
+- 中转时间明显超过偏好的 `6` 小时上限
+- 出发地或到达地不在允许范围内
+- 票价口径不是裸票
+- 来源不在批准范围内
 
-Use `risk_notes` to explain borderline cases instead of silently deleting them.
+对于边界情况，用 `risk_notes` 解释，不要静默删除。
 
-- [ ] **Step 2: Assign a risk level to every remaining row**
+- [ ] **步骤 2：为每条剩余记录分配风险等级**
 
-Allowed `risk_level` values:
+允许的 `risk_level` 值：
 - `low`
 - `medium`
 - `high`
 
-Use the spec rules:
-- low for nonstop or protected same-airport connections with comfortable timing
-- medium for tighter same-airport or more tedious transfers
-- high for self-built, cross-border-fragile, or near-minimum-connection paths
+按规格中的规则处理：
+- 直飞或同机场受保护且时间宽松的联程，标记为 low
+- 同机场但更紧张，或接驳更折腾的行程，标记为 medium
+- 自拼、跨境脆弱、或接近最短中转时间的路径，标记为 high
 
-- [ ] **Step 3: Score the remaining candidates**
+- [ ] **步骤 3：为剩余候选项评分**
 
-Use the approved weight model:
-- `40%` listed price
-- `20%` ground-transfer cost
-- `25%` total minutes
-- `15%` risk
+使用已批准的权重模型：
+- `40%` 票面价格
+- `20%` 地面接驳成本
+- `25%` 总时长
+- `15%` 风险
 
-Write the final normalized result into the `score` column. Lower is better.
+把最终归一化结果写入 `score` 列。分数越低越好。
 
-- [ ] **Step 4: Write the shortlist summary**
+- [ ] **步骤 4：撰写候选清单摘要**
 
-Create `data/flight-research/2026-05-05/shortlist.md` with these sections:
+创建 `data/flight-research/2026-05-05/shortlist.md`，包含以下章节：
 
 ```md
-# Shortlist
+# 候选清单
 
-## Top 3 By Score
+## 按评分排序的 Top 3
 
-## Lowest Fare
+## 最低票价
 
-## Fastest Arrival To 深圳坪山站
+## 最快到达深圳坪山站
 
-## High-Risk Bargain Backup
+## 高风险低价备选
 ```
 
-- [ ] **Step 5: Verify every retained row has a score**
+- [ ] **步骤 5：校验所有保留记录都有评分**
 
-Run: `awk -F, 'NR>1 && $27=="" {print NR}' data/flight-research/2026-05-05/candidates.csv`
-Expected: no output
+运行：`awk -F, 'NR>1 && $27=="" {print NR}' data/flight-research/2026-05-05/candidates.csv`
+预期：无输出
 
-- [ ] **Step 6: Commit the shortlist**
+- [ ] **步骤 6：提交候选清单**
 
 ```bash
 git add data/flight-research/2026-05-05/candidates.csv data/flight-research/2026-05-05/shortlist.md
-git commit -m "docs: rank flight candidates and shortlist options"
+git commit -m "docs: 机票候选排序并生成清单"
 ```
 
-### Task 6: Analyze Price Trend And Buying Window
+### 任务 6：分析价格趋势与购买窗口
 
-**Files:**
-- Modify: `data/flight-research/2026-05-05/trend-analysis.md`
-- Modify: `data/flight-research/2026-05-05/evidence-log.md`
+**文件：**
+- 修改：`data/flight-research/2026-05-05/trend-analysis.md`
+- 修改：`data/flight-research/2026-05-05/evidence-log.md`
 
-- [ ] **Step 1: Capture price-calendar or adjacent-date evidence for the top candidate routes**
+- [ ] **步骤 1：为评分靠前的路线抓取价格日历或相邻日期证据**
 
-Cover at least the neighboring dates:
+至少覆盖以下邻近日期：
 - `2026-05-03`
 - `2026-05-04`
 - `2026-05-05`
@@ -436,86 +436,86 @@ Cover at least the neighboring dates:
 - `2026-05-07`
 - `2026-05-08`
 
-- [ ] **Step 2: Record all directly observable facts under `## Verified Facts`**
+- [ ] **步骤 2：把所有可直接观察到的事实记录到 `## 已核实事实` 下**
 
-Only include statements that are visible in a source at capture time, for example:
-- price on a neighboring date
-- official fare seen at a specific time
-- visible low-price calendar pattern
+这里只能写抓取时来源页面明确可见的事实，例如：
+- 某个相邻日期的价格
+- 某个具体时间看到的官方票价
+- 可见的低价日历模式
 
-- [ ] **Step 3: Fill the three time-window sections**
+- [ ] **步骤 3：填写三个时间窗口章节**
 
-For `## 7 Day Window`, `## 14 Day Window`, and `## 21 Day Window`, write:
-- what evidence supports waiting
-- what evidence supports buying now
-- what would invalidate the current view
+在 `## 7 天窗口`、`## 14 天窗口` 和 `## 21 天窗口` 中分别写明：
+- 有什么证据支持继续等待
+- 有什么证据支持现在购买
+- 什么情况会推翻当前判断
 
-- [ ] **Step 4: Write the inference section separately**
+- [ ] **步骤 4：单独撰写推断章节**
 
-Under `## Inferences`, state:
-- likely purchase window
-- price threshold that should trigger booking
-- routes that are most likely to produce a better alternative
+在 `## 推断` 下写明：
+- 可能的购买窗口
+- 触发下单的价格阈值
+- 最可能出现更优替代方案的路线
 
-- [ ] **Step 5: Verify the trend-analysis file contains both facts and inferences**
+- [ ] **步骤 5：校验趋势分析文件同时包含事实与推断**
 
-Run: `rg '^## ' data/flight-research/2026-05-05/trend-analysis.md`
-Expected:
+运行：`rg '^## ' data/flight-research/2026-05-05/trend-analysis.md`
+预期：
 
 ```text
-## Verified Facts
-## Neighbor-Date Comparisons
-## 7 Day Window
-## 14 Day Window
-## 21 Day Window
-## Inferences
+## 已核实事实
+## 邻近日期比较
+## 7 天窗口
+## 14 天窗口
+## 21 天窗口
+## 推断
 ```
 
-- [ ] **Step 6: Commit the trend analysis**
+- [ ] **步骤 6：提交趋势分析**
 
 ```bash
 git add data/flight-research/2026-05-05/trend-analysis.md data/flight-research/2026-05-05/evidence-log.md
-git commit -m "docs: analyze price trend and buying window"
+git commit -m "docs: 分析价格趋势与购买窗口"
 ```
 
-### Task 7: Write The Final Research Report
+### 任务 7：撰写最终调研报告
 
-**Files:**
-- Modify: `docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
-- Modify: `data/flight-research/2026-05-05/shortlist.md`
+**文件：**
+- 修改：`docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
+- 修改：`data/flight-research/2026-05-05/shortlist.md`
 
-- [ ] **Step 1: Fill the parameter confirmation and candidate summary**
+- [ ] **步骤 1：填写参数确认和候选方案摘要**
 
-`## 1. 任务参数确认` must restate:
-- travel date
-- allowed origins
-- allowed destinations
-- same-day arrival rule
-- layover floor
-- fare basis
-- final anchor at 深圳坪山站
+`## 1. 任务参数确认` 必须重述：
+- 出行日期
+- 允许的出发地
+- 允许的到达地
+- 当日到达规则
+- 最短中转时间
+- 票价口径
+- 最终锚点为 `深圳坪山站`
 
-`## 2. 候选方案总表` must summarize the retained rows, not the raw rejected rows.
+`## 2. 候选方案总表` 必须总结保留下来的记录，而不是原始被淘汰的记录。
 
-- [ ] **Step 2: Write the Top 3, lowest fare, fastest, and high-risk backup sections**
+- [ ] **步骤 2：撰写 Top 3、最低价、最快方案和高风险备选章节**
 
-Every recommended itinerary must answer:
-- why it was selected
-- who it fits
-- main risk
-- the price at which it stops being attractive
+每个被推荐的行程都必须回答：
+- 为什么选它
+- 适合什么人
+- 主要风险
+- 在什么价格以上它就不再值得推荐
 
-- [ ] **Step 3: Write the buying recommendation**
+- [ ] **步骤 3：撰写购买建议**
 
-`## 7. 购买时机判断` must explicitly answer:
-- buy now or wait
-- latest date to keep watching
-- booking trigger price
-- which routes to monitor
+`## 7. 购买时机判断` 必须明确回答：
+- 现在买还是继续等
+- 最晚观察到哪一天
+- 触发下单的价格
+- 重点监控哪些路线
 
-- [ ] **Step 4: Write the final summary block**
+- [ ] **步骤 4：撰写最终摘要块**
 
-`## 9. 简短结论摘要` must include these labels exactly:
+`## 9. 简短结论摘要` 必须精确包含以下标签：
 
 ```md
 - 综合最优：
@@ -525,10 +525,10 @@ Every recommended itinerary must answer:
 - 重点监控路线：
 ```
 
-- [ ] **Step 5: Verify the report headings**
+- [ ] **步骤 5：校验报告标题结构**
 
-Run: `rg '^## ' docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
-Expected:
+运行：`rg '^## ' docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
+预期：
 
 ```text
 ## 1. 任务参数确认
@@ -542,37 +542,37 @@ Expected:
 ## 9. 简短结论摘要
 ```
 
-- [ ] **Step 6: Commit the final report**
+- [ ] **步骤 6：提交最终报告**
 
 ```bash
 git add docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md data/flight-research/2026-05-05/shortlist.md
-git commit -m "docs: add harbin to shenzhen flight research report"
+git commit -m "docs: 添加哈尔滨回深圳机票调研报告"
 ```
 
-### Task 8: Final QA And Publish
+### 任务 8：最终 QA 与发布
 
-**Files:**
-- Modify: `data/flight-research/2026-05-05/candidates.csv`
-- Modify: `data/flight-research/2026-05-05/evidence-log.md`
-- Modify: `data/flight-research/2026-05-05/ground-transfer-notes.md`
-- Modify: `data/flight-research/2026-05-05/trend-analysis.md`
-- Modify: `data/flight-research/2026-05-05/shortlist.md`
-- Modify: `docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
+**文件：**
+- 修改：`data/flight-research/2026-05-05/candidates.csv`
+- 修改：`data/flight-research/2026-05-05/evidence-log.md`
+- 修改：`data/flight-research/2026-05-05/ground-transfer-notes.md`
+- 修改：`data/flight-research/2026-05-05/trend-analysis.md`
+- 修改：`data/flight-research/2026-05-05/shortlist.md`
+- 修改：`docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
 
-- [ ] **Step 1: Run completeness checks on the candidate table**
+- [ ] **步骤 1：对候选表运行完整性检查**
 
-Run: `awk -F, 'NR>1 && ($15=="" || $17=="" || $20=="" || $22=="" || $23=="" || $24=="" || $25=="" || $27=="") {print NR}' data/flight-research/2026-05-05/candidates.csv`
-Expected: no output
+运行：`awk -F, 'NR>1 && ($15=="" || $17=="" || $20=="" || $22=="" || $23=="" || $24=="" || $25=="" || $27=="") {print NR}' data/flight-research/2026-05-05/candidates.csv`
+预期：无输出
 
-- [ ] **Step 2: Run the placeholder scan on every deliverable**
+- [ ] **步骤 2：对所有交付物运行占位符扫描**
 
-Run: `rg -n 'TBD|TODO|todo|待补|占位' data/flight-research/2026-05-05 docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
-Expected: no output
+运行：`rg -n 'TBD|TODO|todo|待补|占位' data/flight-research/2026-05-05 docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md`
+预期：无输出
 
-- [ ] **Step 3: Stage only the publishable research files and inspect the staged file list**
+- [ ] **步骤 3：只暂存可发布的调研文件，并检查已暂存文件列表**
 
-Run: `git add data/flight-research/2026-05-05 docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md && git diff --cached --name-only`
-Expected:
+运行：`git add data/flight-research/2026-05-05 docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md && git diff --cached --name-only`
+预期：
 
 ```text
 data/flight-research/2026-05-05/candidates.csv
@@ -583,30 +583,30 @@ data/flight-research/2026-05-05/trend-analysis.md
 docs/superpowers/research/2026-04-07-harbin-shenzhen-flight-report.md
 ```
 
-- [ ] **Step 4: Create the publish commit**
+- [ ] **步骤 4：创建发布提交**
 
 ```bash
-git commit -m "docs: publish harbin to shenzhen flight research"
+git commit -m "docs: 发布哈尔滨回深圳机票调研"
 ```
 
-- [ ] **Step 5: Push the branch**
+- [ ] **步骤 5：推送分支**
 
 ```bash
 git push origin HEAD
 ```
 
-- [ ] **Step 6: Capture the pushed commit hash in the report handoff**
+- [ ] **步骤 6：在报告交付说明中记录已推送的提交哈希**
 
-First run:
+先运行：
 
 ```bash
 git rev-parse --short HEAD
 ```
 
-Expected: one short commit hash on stdout
+预期：标准输出中出现一个短提交哈希
 
-Then append one final line to the report using that actual hash:
+然后把实际哈希作为最后一行追加到报告中：
 
 ```md
-> Published to Git at commit: abc1234
+> 已发布到 Git，提交：abc1234
 ```
